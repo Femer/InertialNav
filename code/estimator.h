@@ -77,6 +77,79 @@ public:
     AttPosEKF();
     ~AttPosEKF();
 
+
+
+    /* ##############################################
+     *
+     *   M A I N    F I L T E R    P A R A M E T E R S
+     *
+     * ########################################### */
+
+    /*
+     * parameters are defined here and initialised in
+     * the InitialiseParameters() (which is just 20 lines down)
+     */
+
+    float covTimeStepMax; // maximum time allowed between covariance predictions
+    float covDelAngMax; // maximum delta angle between covariance predictions
+    float rngFinderPitch; // pitch angle of laser range finder in radians. Zero is aligned with the Z body axis. Positive is RH rotation about Y body axis.
+    float a1; // optical flow sensor misalgnment angle about X axis (rad)
+    float a2; // optical flow sensor misalgnment angle about Y axis (rad)
+    float a3; // optical flow sensor misalgnment angle about Z axis (rad)
+
+    float yawVarScale;
+    float windVelSigma;
+    float dAngBiasSigma;
+    float dVelBiasSigma;
+    float magEarthSigma;
+    float magBodySigma;
+    float gndHgtSigma;
+
+    float vneSigma;
+    float vdSigma;
+    float posNeSigma;
+    float posDSigma;
+    float magMeasurementSigma;
+    float airspeedMeasurementSigma;
+
+    float gyroProcessNoise;
+    float accelProcessNoise;
+
+    float EAS2TAS; // ratio f true to equivalent airspeed
+
+    void InitialiseParameters()
+    {
+        covTimeStepMax = 0.07f; // maximum time allowed between covariance predictions
+        covDelAngMax = 0.02f; // maximum delta angle between covariance predictions
+        rngFinderPitch = 0.0f; // pitch angle of laser range finder in radians. Zero is aligned with the Z body axis. Positive is RH rotation about Y body axis.
+        a1 = 0.0f; // optical flow sensor misalgnment angle about X axis (rad)
+        a2 = 0.0f; // optical flow sensor misalgnment angle about Y axis (rad)
+        a3 = 0.0f; // optical flow sensor misalgnment angle about Z axis (rad)
+
+        EAS2TAS = 1.0f;
+
+        yawVarScale = 1.0f;
+        windVelSigma = 0.1f;
+        dAngBiasSigma = 5.0e-7f;
+        dVelBiasSigma = 1e-4f;
+        magEarthSigma = 3.0e-4f;
+        magBodySigma  = 3.0e-4f;
+        gndHgtSigma  = 0.02f; // assume 2% terrain gradient 1-sigma
+
+        vneSigma = 0.2f;
+        vdSigma = 0.3f;
+        posNeSigma = 2.0f;
+        posDSigma = 2.0f;
+
+        magMeasurementSigma = 0.05;
+        airspeedMeasurementSigma = 1.4f;
+        gyroProcessNoise = 1.4544411e-2f;
+        accelProcessNoise = 0.5f;
+    }
+
+
+
+
     // Global variables
     float KH[n_states][n_states]; //  intermediate result used for covariance updates
     float KHP[n_states][n_states]; // intermediate result used for covariance updates
@@ -129,25 +202,17 @@ public:
     float losData[2]; // Optical flow LOS rate measurements
     float varInnovVtas; // innovation variance output
     float VtasMeas; // true airspeed measurement (m/s)
-    float latRef; // WGS-84 latitude of reference point (rad)
-    float lonRef; // WGS-84 longitude of reference point (rad)
+    double latRef; // WGS-84 latitude of reference point (rad)
+    double lonRef; // WGS-84 longitude of reference point (rad)
     float hgtRef; // WGS-84 height of reference point (m)
     Vector3f magBias; // states representing magnetometer bias vector in XYZ body axes
-    uint8_t covSkipCount; // Number of state prediction frames (IMU daya updates to skip before doing the covariance prediction
-    static const float covTimeStepMax = 0.07f; // maximum time allowed between covariance predictions
-    static const float covDelAngMax = 0.02f; // maximum delta angle between covariance predictions
-    static const float rngFinderPitch = 0.0f; // pitch angle of laser range finder in radians. Zero is aligned with the Z body axis. Positive is RH rotation about Y body axis.
-    static const float a1 = 0.0f; // optical flow sensor misalgnment angle about X axis (rad)
-    static const float a2 = 0.0f; // optical flow sensor misalgnment angle about Y axis (rad)
-    static const float a3 = 0.0f; // optical flow sensor misalgnment angle about Z axis (rad)
-
-    float EAS2TAS; // ratio f true to equivalent airspeed
+    unsigned covSkipCount; // Number of state prediction frames (IMU daya updates to skip before doing the covariance prediction
 
     // GPS input data variables
     float gpsCourse;
     float gpsVelD;
-    float gpsLat;
-    float gpsLon;
+    double gpsLat;
+    double gpsLon;
     float gpsHgt;
     uint8_t GPSstatus;
 
@@ -213,7 +278,7 @@ void StoreStates(uint64_t timestamp_ms);
  *         time-wise where valid states were updated and invalid remained at the old
  *         value.
  */
-int RecallStates(float statesForFusion[n_states], uint64_t msec);
+int RecallStates(float *statesForFusion, uint64_t msec);
 
 void ResetStoredStates();
 
@@ -227,7 +292,7 @@ static void quat2eul(float (&eul)[3], const float (&quat)[4]);
 
 static void calcvelNED(float (&velNED)[3], float gpsCourse, float gpsGndSpd, float gpsVelD);
 
-static void calcposNED(float (&posNED)[3], float lat, float lon, float hgt, float latRef, float lonRef, float hgtRef);
+static void calcposNED(float (&posNED)[3], double lat, double lon, float hgt, double latRef, double lonRef, float hgtRef);
 
 static void calcLLH(float (&posNED)[3], float lat, float lon, float hgt, float latRef, float lonRef, float hgtRef);
 

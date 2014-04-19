@@ -128,7 +128,6 @@ void swap_var(float &d1, float &d2)
 AttPosEKF::AttPosEKF() :
     fusionModeGPS(0),
     covSkipCount(0),
-    EAS2TAS(1.0f),
     statesInitialised(false),
     fuseVelData(false),
     fusePosData(false),
@@ -143,7 +142,7 @@ AttPosEKF::AttPosEKF() :
     numericalProtection(true),
     storeIndex(0)
 {
-
+    InitialiseParameters();
 }
 
 AttPosEKF::~AttPosEKF()
@@ -195,8 +194,8 @@ void AttPosEKF::UpdateStrapdownEquationsNED()
     }
     else
     {
-        deltaQuat[0] = cos(0.5f*rotationMag);
-        float rotScaler = (sin(0.5f*rotationMag))/rotationMag;
+        deltaQuat[0] = cosf(0.5f*rotationMag);
+        float rotScaler = (sinf(0.5f*rotationMag))/rotationMag;
         deltaQuat[1] = correctedDelAng.x*rotScaler;
         deltaQuat[2] = correctedDelAng.y*rotScaler;
         deltaQuat[3] = correctedDelAng.z*rotScaler;
@@ -278,12 +277,6 @@ void AttPosEKF::UpdateStrapdownEquationsNED()
 void AttPosEKF::CovariancePrediction(float dt)
 {
     // scalars
-    float windVelSigma;
-    float dAngBiasSigma;
-    float dVelBiasSigma;
-    float magEarthSigma;
-    float magBodySigma;
-    float gndHgtSigma;
     float daxCov;
     float dayCov;
     float dazCov;
@@ -306,7 +299,7 @@ void AttPosEKF::CovariancePrediction(float dt)
     float dvz_b;
 
     // arrays
-    float processNoise[23];
+    float processNoise[n_states];
     float SF[15];
     float SG[8];
     float SQ[11];
@@ -314,24 +307,18 @@ void AttPosEKF::CovariancePrediction(float dt)
     float nextP[n_states][n_states];
 
     // calculate covariance prediction process noise
-    const float yawVarScale = 1.0f;
-    windVelSigma = dt*0.1f;
-    dAngBiasSigma = dt*5.0e-7f;
-    dVelBiasSigma = dt*1e-4f;
-    magEarthSigma = dt*3.0e-4f;
-    magBodySigma  = dt*3.0e-4f;
-    gndHgtSigma   = dt*sqrtf(sq(states[4]) + sq(states[5]))*0.02f; // assume 2% terrain gradient 1-sigma
-
     for (uint8_t i= 0; i<=9;  i++) processNoise[i] = 1.0e-9f;
-    for (uint8_t i=10; i<=12; i++) processNoise[i] = dAngBiasSigma;
+    for (uint8_t i=10; i<=12; i++) processNoise[i] = dt * dAngBiasSigma;
     // scale gyro bias noise when on ground to allow for faster bias estimation
-    for (uint8_t i=10; i<=12; i++) processNoise[i] = dAngBiasSigma;
+    for (uint8_t i=10; i<=12; i++) processNoise[i] = dt * dAngBiasSigma;
     processNoise[13] = dVelBiasSigma;
-    for (uint8_t i=14; i<=15; i++) processNoise[i] = windVelSigma;
-    for (uint8_t i=16; i<=18; i++) processNoise[i] = magEarthSigma;
-    for (uint8_t i=19; i<=21; i++) processNoise[i] = magBodySigma;
-    processNoise[22] = gndHgtSigma;
-    for (uint8_t i= 0; i<=22; i++) processNoise[i] = sq(processNoise[i]);
+    for (uint8_t i=14; i<=15; i++) processNoise[i] = dt * windVelSigma;
+    for (uint8_t i=16; i<=18; i++) processNoise[i] = dt * magEarthSigma;
+    for (uint8_t i=19; i<=21; i++) processNoise[i] = dt * magBodySigma;
+    processNoise[22] = dt * sqrtf(sq(states[4]) + sq(states[5])) * gndHgtSigma;
+
+    // square all sigmas
+    for (unsigned i = 0; i < n_states; i++) processNoise[i] = sq(processNoise[i]);
 
     // set variables used to calculate covariance growth
     dvx = summedDelVel.x;
@@ -348,13 +335,15 @@ void AttPosEKF::CovariancePrediction(float dt)
     day_b = states[11];
     daz_b = states[12];
     dvz_b =  states[13];
-    daxCov = sq(dt*1.4544411e-2f);
-    dayCov = sq(dt*1.4544411e-2f);
-    dazCov = sq(dt*1.4544411e-2f);
+    gyroProcessNoise = ConstrainFloat(gyroProcessNoise, 1e-3f, 5e-2f);
+    daxCov = sq(dt*gyroProcessNoise);
+    dayCov = sq(dt*gyroProcessNoise);
+    dazCov = sq(dt*gyroProcessNoise);
     if (onGround) dazCov = dazCov * sq(yawVarScale);
-    dvxCov = sq(dt*0.5f);
-    dvyCov = sq(dt*0.5f);
-    dvzCov = sq(dt*0.5f);
+    accelProcessNoise = ConstrainFloat(accelProcessNoise, 5e-2, 1.0f);
+    dvxCov = sq(dt*accelProcessNoise);
+    dvyCov = sq(dt*accelProcessNoise);
+    dvzCov = sq(dt*accelProcessNoise);
 
     // Predicted covariance calculation
     SF[0] = dvz - dvz_b;
@@ -1070,12 +1059,12 @@ void AttPosEKF::FuseVelposNED()
         // Estimate the GPS Velocity, GPS horiz position and height measurement variances.
         velErr = 0.2f*accNavMag; // additional error in GPS velocities caused by manoeuvring
         posErr = 0.2f*accNavMag; // additional error in GPS position caused by manoeuvring
-        R_OBS[0] = 0.04f + sq(velErr);
+        R_OBS[0] = sq(vneSigma) + sq(velErr);
         R_OBS[1] = R_OBS[0];
-        R_OBS[2] = 0.08f + sq(velErr);
-        R_OBS[3] = R_OBS[2];
-        R_OBS[4] = 4.0f  + sq(posErr);
-        R_OBS[5] = 4.0f;
+        R_OBS[2] = sq(vdSigma) + sq(velErr);
+        R_OBS[3] = sq(posNeSigma) + sq(posErr);
+        R_OBS[4] = R_OBS[3];
+        R_OBS[5] = sq(posDSigma) + sq(posErr);
 
         // Set innovation variances to zero default
         for (uint8_t i = 0; i<=5; i++)
@@ -1264,7 +1253,7 @@ void AttPosEKF::FuseMagnetometer()
     static float magXbias = 0.0f;
     static float magYbias = 0.0f;
     static float magZbias = 0.0f;
-    static float R_MAG = 0.0025f;
+    float R_MAG = sq(magMeasurementSigma);
     float DCM[3][3] =
     {
         {1.0f,0.0f,0.0f} ,
@@ -1332,7 +1321,7 @@ void AttPosEKF::FuseMagnetometer()
             MagPred[2] = DCM[2][0]*magN + DCM[2][1]*magE  + DCM[2][2]*magD + magZbias;
 
             // scale magnetometer observation error with total angular rate
-            R_MAG = 0.0025f + sq(0.05f*dAngIMU.length()/dtIMU);
+            R_MAG = sq(magMeasurementSigma) + sq(0.05f*dAngIMU.length()/dtIMU);
 
             // Calculate observation jacobians
             SH_MAG[0] = 2*magD*q3 + 2*magE*q2 + 2*magN*q1;
@@ -1572,7 +1561,7 @@ void AttPosEKF::FuseAirspeed()
     float vd;
     float vwn;
     float vwe;
-    const float R_TAS = 2.0f;
+    float R_TAS = sq(airspeedMeasurementSigma);
     float SH_TAS[3];
     float VtasPred;
 
@@ -2096,7 +2085,7 @@ void AttPosEKF::ResetStoredStates()
 }
 
 // Output the state vector stored at the time that best matches that specified by msec
-int AttPosEKF::RecallStates(float statesForFusion[n_states], uint64_t msec)
+int AttPosEKF::RecallStates(float* statesForFusion, uint64_t msec)
 {
     int ret = 0;
 
@@ -2104,12 +2093,14 @@ int AttPosEKF::RecallStates(float statesForFusion[n_states], uint64_t msec)
     unsigned bestStoreIndex = 0;
     for (unsigned storeIndex = 0; storeIndex < data_buffer_size; storeIndex++)
     {
-        // The time delta can also end up as negative number,
-        // since we might compare future to past or past to future
-        // therefore cast to int64.
-        int64_t timeDelta = (int64_t)msec - (int64_t)statetimeStamp[storeIndex];
-        if (timeDelta < 0) {
-            timeDelta = -timeDelta;
+        // Work around a GCC compiler bug - we know 64bit support on ARM is
+        // sketchy in GCC.
+        uint64_t timeDelta;
+
+        if (msec > statetimeStamp[storeIndex]) {
+            timeDelta = msec - statetimeStamp[storeIndex];
+        } else {
+            timeDelta = statetimeStamp[storeIndex] - msec;
         }
 
         if (timeDelta < bestTimeDelta)
@@ -2120,7 +2111,7 @@ int AttPosEKF::RecallStates(float statesForFusion[n_states], uint64_t msec)
     }
     if (bestTimeDelta < 200) // only output stored state if < 200 msec retrieval error
     {
-        for (uint8_t i=0; i < n_states; i++) {
+        for (unsigned i=0; i < n_states; i++) {
             if (isfinite(storedStates[i][bestStoreIndex])) {
                 statesForFusion[i] = storedStates[i][bestStoreIndex];
             } else if (isfinite(states[i])) {
@@ -2134,7 +2125,7 @@ int AttPosEKF::RecallStates(float statesForFusion[n_states], uint64_t msec)
     }
     else // otherwise output current state
     {
-        for (uint8_t i=0; i < n_states; i++) {
+        for (unsigned i = 0; i < n_states; i++) {
             if (isfinite(states[i])) {
                 statesForFusion[i] = states[i];
             } else {
@@ -2224,7 +2215,7 @@ void AttPosEKF::calcvelNED(float (&velNED)[3], float gpsCourse, float gpsGndSpd,
     velNED[2] = gpsVelD;
 }
 
-void AttPosEKF::calcposNED(float (&posNED)[3], float lat, float lon, float hgt, float latRef, float lonRef, float hgtRef)
+void AttPosEKF::calcposNED(float (&posNED)[3], double lat, double lon, float hgt, double latRef, double lonRef, float hgtRef)
 {
     posNED[0] = earthRadius * (lat - latRef);
     posNED[1] = earthRadius * cos(latRef) * (lon - lonRef);
@@ -2261,16 +2252,16 @@ void AttPosEKF::CovarianceInit()
     P[1][1]   = 0.25f * sq(1.0f*deg2rad);
     P[2][2]   = 0.25f * sq(1.0f*deg2rad);
     P[3][3]   = 0.25f * sq(10.0f*deg2rad);
-    P[4][4]   = sq(0.7);
+    P[4][4]   = sq(0.7f);
     P[5][5]   = P[4][4];
-    P[6][6]   = sq(0.7);
-    P[7][7]   = sq(15.0);
+    P[6][6]   = sq(0.7f);
+    P[7][7]   = sq(15.0f);
     P[8][8]   = P[7][7];
-    P[9][9]   = sq(5.0);
-    P[10][10] = sq(0.1*deg2rad*dtIMU);
+    P[9][9]   = sq(5.0f);
+    P[10][10] = sq(0.1f*deg2rad*dtIMU);
     P[11][11] = P[10][10];
     P[12][12] = P[10][10];
-    P[13][13] = sq(0.2*dtIMU);
+    P[13][13] = sq(0.2f*dtIMU);
     P[14][14] = sq(8.0f);
     P[15][14]  = P[14][14];
     P[16][16] = sq(0.02f);
@@ -2495,7 +2486,7 @@ void AttPosEKF::ResetVelocity(void)
 
 void AttPosEKF::FillErrorReport(struct ekf_status_report *err)
 {
-    for (int i = 0; i < n_states; i++)
+    for (unsigned i = 0; i < n_states; i++)
     {
         err->states[i] = states[i];
     }
