@@ -1696,19 +1696,6 @@ void AttPosEKF::FuseAirspeed()
     ConstrainVariances();
 }
 
-void AttPosEKF::zeroRows(float (&covMat)[n_states][n_states], uint8_t first, uint8_t last)
-{
-    uint8_t row;
-    uint8_t col;
-    for (row=first; row<=last; row++)
-    {
-        for (col=0; col<n_states; col++)
-        {
-            covMat[row][col] = 0.0;
-        }
-    }
-}
-
 void AttPosEKF::FuseRangeFinder()
 {
 
