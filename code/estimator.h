@@ -48,27 +48,6 @@ void swap_var(float &d1, float &d2);
 const unsigned int n_states = 23;
 const unsigned int data_buffer_size = 50;
 
-
-// extern float rngMea; // terrain laser range finder measurement (m)
-
-
-// extern float statesAtMagMeasTime[n_states]; // filter satates at the effective measurement time
-// extern float innovVtas; // true airspeed measurement innovation
-// extern float innovRng; // laser range finder measurement innovation
-// extern float varInnovVtas; // innovation variance output
-// extern bool fuseVtasData; // boolean true when airspeed data is to be fused
-// extern bool fuseRngData; // boolean true when range finder data is to be fused
-// extern float VtasMeas; // true airspeed measurement (m/s)
-// extern float statesAtVtasMeasTime[n_states]; // filter states at the effective measurement time
-// extern float latRef; // WGS-84 latitude of reference point (rad)
-// extern float lonRef; // WGS-84 longitude of reference point (rad)
-// extern float hgtRef; // WGS-84 height of reference point (m)
-// extern Vector3f magBias; // states representing magnetometer bias vector in XYZ body axes
-// extern uint8_t covSkipCount; // Number of state prediction frames (IMU daya updates to skip before doing the covariance prediction
-
-
-// extern bool staticMode;
-
 enum GPS_FIX {
     GPS_FIX_NOFIX = 0,
     GPS_FIX_2D = 2,
