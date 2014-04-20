@@ -380,6 +380,13 @@ if exist('SH_LOS','var')
         fprintf(fid,'SK_LOS(%d) = %s;\n',rowIndex,string);
     end
     
+    fprintf(fid,'\n');
+    fprintf(fid,'SKK_LOS = zeros(%d,1);\n',numel(SKK_LOS));
+    for rowIndex = 1:numel(SKK_LOS)
+        string = char(SKK_LOS(rowIndex,1));
+        fprintf(fid,'SKK_LOS(%d) = %s;\n',rowIndex,string);
+    end
+    
     [nRow,nCol] = size(K_LOSX);
     fprintf(fid,'\n');
     fprintf(fid,'Kfusion = zeros(%d,1);\n',nRow,nCol);
