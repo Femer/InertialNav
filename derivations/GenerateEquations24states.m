@@ -6,9 +6,8 @@
 % Fusion of true airspeed
 % Sequential fusion of magnetic flux measurements
 % sequential fusion of angular LOS rate measurements from optical flow
-% sensor assumed to be aligned witht eh Z body axis plus a small
-% misalingment
-% 23 state architecture.
+% sensor assumed to be aligned with the Z body axis plus a small misalignment
+% 24 state architecture.
 % IMU data is assumed to arrive at a constant rate with a time step of dt
 % IMU delta angle and velocity data are used as time varying parameters,
 % not observations
