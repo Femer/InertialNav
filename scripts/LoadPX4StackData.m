@@ -3,7 +3,8 @@ close all;
 
 % load('search_pattern_log002.mat');
 %load('quad_flight_log003.mat');
-load('attitude_log001.mat');
+%load('attitude_log001.mat');
+load('m_10_48_56.mat');
 
 mintime = 0;
 maxtime = 150;
@@ -33,6 +34,26 @@ if (exist('AIRS', 'var') == 1)
     end
 
     AIRS.data = AIRS.data(1:i,:);
+end
+
+i = 1;
+
+if (exist('FLOW', 'var') == 1)
+    while (i < size(FLOW.data, 1) && (FLOW.data(i,1) - prune_start_time) < maxtime)
+        i = i+1;
+    end
+
+    FLOW.data = FLOW.data(1:i,:);
+end
+
+i = 1;
+
+if (exist('DIST', 'var') == 1)
+    while (i < size(DIST.data, 1) && (DIST.data(i,1) - prune_start_time) < maxtime)
+        i = i+1;
+    end
+
+    DIST.data = DIST.data(1:i,:);
 end
 
 i = 1;
@@ -184,6 +205,18 @@ else
     end
 end
 
+
+%% Optical Flow Data
+if ~isempty(FLOW)
+    FLOW.data(:,1) = (FLOW.data(:,1) - zerotimestamp) * 1e3;
+end
+
+
+%% Laser Distance Data
+if ~isempty(DIST)
+    DIST.data(:,1) = (DIST.data(:,1) - zerotimestamp) * 1e3;
+end
+
 %% Reference Data
 
 if ~isempty(ATT.data)
@@ -233,6 +266,13 @@ MAG = [MAGtimestamp MAGtimestamp MagX*1e3 MagY*1e3 MagZ*1e3 MagBiasX*1e3 MagBias
 ATT = [ATTtimestamp ATTtimestamp Roll Pitch Yaw zeros(size(Yaw, 1), 1) zeros(size(Yaw, 1), 1)];
 % {'timestamp' 'TimeMS' 'Yaw' 'WpDist' 'TargBrg' 'NavBrg' 'AltErr' 'Arspd' 'Alt' 'GSpdCM'}
 NTUN = [ADStimestamp ADStimestamp zeros(size(Veas, 1), 1) zeros(size(Veas, 1), 1) zeros(size(Veas, 1), 1) zeros(size(Veas, 1), 1) zeros(size(Veas, 1), 1) Veas HgtBaro zeros(size(Veas, 1), 1)];
+
+% timestamp, rawx, rawy, distance, quality, sensor id
+FLOW_OUT = [FLOW.data(:,1) FLOW.data(:,2) FLOW.data(:,3) FLOW.data(:,6) FLOW.data(:,7) FLOW.data(:,8)];
+
+% timestamp, distance, flags
+DIST_OUT = [DIST.data(:,1) DIST.data(:,2) DIST.data(:,4)];
+
 save('IMU.txt','IMU','-ascii');
 save('GPS.txt','GPS','-ascii');
 save('GPSraw.txt','GPSraw','-ascii');
@@ -240,6 +280,8 @@ save('GPOSonboard.txt','GPOSonboard','-ascii');
 save('MAG.txt','MAG','-ascii')
 save('ATT.txt','ATT','-ascii');
 save('NTUN.txt','NTUN','-ascii');
+save('FLOW.txt','FLOW_OUT','-ascii');
+save('DIST.txt','DIST_OUT','-ascii');
 save('timing.txt','alignTime','startTime','endTime','msecVelDelay','msecPosDelay','msecHgtDelay','msecMagDelay','msecTasDelay','EAS2TAS','-ascii');
 
 clear all;
