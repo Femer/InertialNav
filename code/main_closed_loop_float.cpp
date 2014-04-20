@@ -34,9 +34,11 @@ bool endOfData = false; //boolean set to true when all files have returned data
 uint32_t msecVelDelay = 230;
 uint32_t msecPosDelay = 210;
 uint32_t msecHgtDelay = 350;
-uint32_t msecRngDelay = 100;
+uint32_t msecRngDelay = 20;
 uint32_t msecMagDelay = 30;
 uint32_t msecTasDelay = 210;
+uint32_t msecOptDelay = 20;
+
 
 // IMU input data variables
 float imuIn;
@@ -257,6 +259,9 @@ int main()
                 {
                     _ekf->calcvelNED(_ekf->velNED, _ekf->gpsCourse, gpsGndSpd, _ekf->gpsVelD);
                 }
+                if (pAdsFile) {
+                    _ekf->hgtMea = _ekf->baroHgt;
+                }
                 _ekf->InitialiseFilter(_ekf->velNED);
             }
 
@@ -294,31 +299,56 @@ int main()
             }
 
             // Fuse Flow Measurements
-            if (newFlowData && _ekf->statesInitialised)
+            if (_ekf->statesInitialised && _ekf->terrainInitialised)
             {
+                if (newFlowData) {
+                    // 0.00711424167
 
-                // 0.00711424167
+                    flowRadX = -flowRawPixelX * 0.018f;
+                    flowRadY = -flowRawPixelY * 0.018f;
 
-                flowRadX = -flowRawPixelX * 0.018f;
-                flowRadY = -flowRawPixelY * 0.018f;
+                    float bx = (flowRadX - _ekf->angRate.x) * distLastValidReading * 1.1f;
+                    float by = (flowRadY - _ekf->angRate.y) * distLastValidReading * 1.1f;
 
-                float bx = (flowRadX - _ekf->angRate.x) * distLastValidReading * 1.1f;
-                float by = (flowRadY - _ekf->angRate.y) * distLastValidReading * 1.1f;
+                    float tempQuat[4];
+                    float euler[3];
+                    for (uint8_t j=0; j<4; j++) tempQuat[j] = _ekf->states[j];
+                    _ekf->quat2eul(euler, tempQuat);
 
-                float tempQuat[4];
-                float euler[3];
-                for (uint8_t j=0; j<4; j++) tempQuat[j] = _ekf->states[j];
-                _ekf->quat2eul(euler, tempQuat);
+                    flowRawGroundSpeedY = cos(euler[2]) * bx + -sin(euler[2]) * by;
+                    flowRawGroundSpeedX = -(sin(euler[2]) * bx + cos(euler[2]) * by);
 
-                flowRawGroundSpeedY = cos(euler[2]) * bx + -sin(euler[2]) * by;
-                flowRawGroundSpeedX = -(sin(euler[2]) * bx + cos(euler[2]) * by);
+                    // recall states and delta angles stored at time of measurement after adjusting for delays
+                    _ekf->RecallStates(_ekf->statesAtLosMeasTime, (IMUmsec - msecOptDelay));
+
+                    // write measurements
+                    _ekf->losData[0] = flowRadX;
+                    _ekf->losData[1] = flowRadY;
+
+                    // fuse measurements
+                    _ekf->fuseOptData = true;
+                } else {
+                    _ekf->fuseOptData = false;
+                }
+                _ekf->FuseOpticalFlow(_ekf->dtIMU);
             }
 
             // Fuse Ground distance Measurements
             if (newDistData && _ekf->statesInitialised)
             {
-                if (distValid > 0.0f) {
+                if (distValid > 0.0f && _ekf->terrainInitialised) {
                     distLastValidReading = distGroundDistance;
+                    _ekf->rngMea = distGroundDistance;
+                    // recall states stored at time of measurement after adjusting for delays
+                    _ekf->RecallStates(_ekf->statesAtRngTime, (IMUmsec - msecRngDelay));
+                    _ekf->fuseRngData = true;
+                    _ekf->FuseRangeFinder();
+                } else if (distValid > 0.0f && !_ekf->terrainInitialised) {
+                    distLastValidReading = distGroundDistance;
+                    _ekf->rngMea = distGroundDistance;
+                    _ekf->ResetTerrain();
+                } else {
+                    _ekf->fuseRngData = false;
                 }
             }
 
@@ -368,19 +398,10 @@ int main()
                 _ekf->RecallStates(_ekf->statesAtHgtTime, (IMUmsec - msecHgtDelay));
                 // run the fusion step
                 _ekf->FuseVelposNED();
-
-                // Fudge a fusion of range finder data using measurements synthesised from baro alt
-                //TODO - use logged rangefinder data
-                _ekf->rngMea = (_ekf->hgtMea + 2.0f) / _ekf->Tbn.z.z;
-                // recall states stored at time of measurement after adjusting for delays
-                _ekf->RecallStates(_ekf->statesAtRngTime, (IMUmsec - msecRngDelay));
-                _ekf->fuseRngData = true;
-                _ekf->FuseRangeFinder();
             }
             else
             {
                 _ekf->fuseHgtData = false;
-                _ekf->fuseRngData = false;
             }
 
             // Fuse Magnetometer Measurements
@@ -422,8 +443,9 @@ int main()
             // 13: Delta Velocity Z bias -m/s
             // 14-15: Wind Vector  - m/sec (North,East)
             // 16-18: Earth Magnetic Field Vector - milligauss (North, East, Down)
-            // 19-21: Body Magnetic Field Vector - milligauss (X,Y,Z)
+            // 19-21: Body Magnetic Field Vector - milligauss (X, Y, Z)
             // 22: Terrain Vertical Offset - m
+            // 23: Optical flow data scale factor
 
             // printf("\n");
             // printf("dtIMU: %8.6f, dt: %8.6f, imuMsec: %u\n", _ekf->dtIMU, dt, IMUmsec);
@@ -808,7 +830,7 @@ void WriteFilterOutput()
     fprintf(pOnboardPosVelOutFile,"\n");
 
     fprintf(pOutFlowFile, " %e", float(IMUmsec*0.001f));
-    fprintf(pOutFlowFile, " %e %e %e %e %e %e %e %e %e\n", flowRadX, flowRadY, _ekf->angRate.x, _ekf->angRate.y, flowRawGroundSpeedX, flowRawGroundSpeedY, gpsRaw[4], gpsRaw[5], distLastValidReading);
+    fprintf(pOutFlowFile, " %e %e %e %e %e %e %e %e %e %e %e\n", flowRadX, flowRadY, _ekf->angRate.x, _ekf->angRate.y, flowRawGroundSpeedX, flowRawGroundSpeedY, gpsRaw[4], gpsRaw[5], distLastValidReading, _ekf->losPred[0], _ekf->losPred[1]);
 
     // raw GPS outputs
     fprintf(pGpsRawOUTFile," %e", float(IMUmsec*0.001f));

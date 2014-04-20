@@ -17,7 +17,7 @@ import math
 
 data = np.genfromtxt('StateDataOut.txt', delimiter=' ', skip_header=1,
 	skip_footer=1, names=['time', 'q1', 'q2', 'q3', 'q4', 'Vn', 'Ve', 'Vd', 'Pn', 'Pe', 'Pd',
-	'Bx', 'By', 'Bz', 'Wn', 'We', 'Mn', 'Me', 'Md', 'Mbn', 'Mbe', 'Mbd'])
+	'GBx', 'GBy', 'GBz', 'ABz', 'Wn', 'We', 'Mn', 'Me', 'Md', 'Mbn', 'Mbe', 'Mbd', 'PTd', 'Kopt'])
 
 fig = plt.figure()
 
@@ -39,6 +39,7 @@ ax3 = fig.add_subplot(313)
 ax3.set_xlabel('time (s)')
 ax3.set_ylabel('down position (m)')
 ax3.plot(data['time'], data['Pd'], color='b', label='Pd')
+ax3.plot(data['time'], data['PTd'], color='c', label='PTd')
 
 figvel = plt.figure()
 

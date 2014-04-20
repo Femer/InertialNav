@@ -45,7 +45,8 @@ Vector3f operator*(Vector3f vecIn1, float sclIn1);
 
 void swap_var(float &d1, float &d2);
 
-const unsigned int n_states = 23;
+const unsigned int n_states = 24;
+const unsigned int n_storedStates = 27;
 const unsigned int data_buffer_size = 50;
 
 enum GPS_FIX {
@@ -104,6 +105,7 @@ public:
     float magEarthSigma;
     float magBodySigma;
     float gndHgtSigma;
+    float optScaleSigma;
 
     float vneSigma;
     float vdSigma;
@@ -135,6 +137,7 @@ public:
         magEarthSigma = 3.0e-4f;
         magBodySigma  = 3.0e-4f;
         gndHgtSigma  = 0.02f; // assume 2% terrain gradient 1-sigma
+        optScaleSigma = 1e-4;
 
         vneSigma = 0.2f;
         vdSigma = 0.3f;
@@ -159,13 +162,13 @@ public:
     float storedStates[n_states][data_buffer_size]; // state vectors stored for the last 50 time steps
     uint32_t statetimeStamp[data_buffer_size]; // time stamp for each state vector stored
 
-    float statesAtVelTime[n_states]; // States at the effective measurement time for posNE and velNED measurements
-    float statesAtPosTime[n_states]; // States at the effective measurement time for posNE and velNED measurements
-    float statesAtHgtTime[n_states]; // States at the effective measurement time for the hgtMea measurement
-    float statesAtMagMeasTime[n_states]; // filter satates at the effective measurement time
-    float statesAtVtasMeasTime[n_states]; // filter states at the effective measurement time
-    float statesAtRngTime[n_states]; // filter states at the effective measurement time
-    float statesAtLosMeasTime[n_states]; // filter states at the effective measurement time
+    float statesAtVelTime[n_storedStates]; // States and delta angles at the effective measurement time for posNE and velNED measurements
+    float statesAtPosTime[n_storedStates]; // States and delta angles at the effective measurement time for posNE and velNED measurements
+    float statesAtHgtTime[n_storedStates]; // States and delta angles at the effective measurement time for the hgtMea measurement
+    float statesAtMagMeasTime[n_storedStates]; // States and delta angles at the effective measurement time
+    float statesAtVtasMeasTime[n_storedStates]; // States and delta angles at the effective Vtas measurement time
+    float statesAtRngTime[n_storedStates]; // States and delta angles at the effective range finder measurement time
+    float statesAtLosMeasTime[n_storedStates]; // States and delta angles at the effective optical flow measurement time
 
     Vector3f correctedDelAng; // delta angles about the xyz body axes corrected for errors (rad)
     Vector3f correctedDelVel; // delta velocities along the XYZ body axes corrected for errors (m/s)
@@ -174,6 +177,7 @@ public:
     float accNavMag; // magnitude of navigation accel (- used to adjust GPS obs variance (m/s^2)
     Vector3f earthRateNED; // earths angular rate vector in NED (rad/s)
     Vector3f angRate; // angular rate vector in XYZ body axes measured by the IMU (rad/s)
+    float delAngForFusion[3]; // corrected and filtered delta angle vector used for fusion purposes
 
     Mat3f Tbn; // transformation matrix from body to NED coordinates
     Mat3f Tnb; // transformation amtrix from NED to body coordinates
@@ -200,6 +204,7 @@ public:
     float innovRng; ///< Range finder innovation for rnge finder measurements
     float innovLOS[2]; // Innovations for optical flow LOS rate measurements
     float losData[2]; // Optical flow LOS rate measurements
+    float losPred[2]; // Predicted optical flow measurements
     float varInnovVtas; // innovation variance output
     float VtasMeas; // true airspeed measurement (m/s)
     double latRef; // WGS-84 latitude of reference point (rad)
@@ -220,6 +225,7 @@ public:
     float baroHgt;
 
     bool statesInitialised;
+    bool terrainInitialised;
 
     bool fuseVelData; // this boolean causes the posNE and velNED obs to be fused
     bool fusePosData; // this boolean causes the posNE and velNED obs to be fused
@@ -254,9 +260,11 @@ void FuseMagnetometer();
 
 void FuseAirspeed();
 
+void ResetTerrain();
+
 void FuseRangeFinder();
 
-void FuseOpticalFlow();
+void FuseOpticalFlow(float dt);
 
 void zeroRows(float (&covMat)[n_states][n_states], uint8_t first, uint8_t last);
 
@@ -264,7 +272,7 @@ void zeroCols(float (&covMat)[n_states][n_states], uint8_t first, uint8_t last);
 
 void quatNorm(float (&quatOut)[4], const float quatIn[4]);
 
-// store staes along with system time stamp in msces
+// store states along with system time stamp in msces
 void StoreStates(uint64_t timestamp_ms);
 
 /**
@@ -279,6 +287,8 @@ void StoreStates(uint64_t timestamp_ms);
  *         value.
  */
 int RecallStates(float *statesForFusion, uint64_t msec);
+
+int RecallDelAng(float *delAngForFusion, uint64_t msec);
 
 void ResetStoredStates();
 
