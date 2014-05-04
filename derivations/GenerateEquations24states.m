@@ -240,8 +240,8 @@ relVelSensor = transpose(Tsn)*[vn;ve;vd];
 omegaSensor = transpose(Tsb)*dAngCor/dt;
 % divide by range to get predicted angular LOS rates relative to X and Y
 % sensor axes and apply scale factor
-losRateX =  Kopt*(relVelSensor(2)/range - omegaSensor(1));
-losRateY = Kopt*(-relVelSensor(1)/range - omegaSensor(2));
+losRateX =  Kopt*(-relVelSensor(2)/range - omegaSensor(1));
+losRateY =  Kopt*( relVelSensor(1)/range - omegaSensor(2));
 
 H_LOS = jacobian([losRateX;losRateY],stateVector); % measurement Jacobian
 [H_LOS,SH_LOS]=OptimiseAlgebra(H_LOS,'SH_LOS');
