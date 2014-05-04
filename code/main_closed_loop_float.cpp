@@ -322,8 +322,8 @@ int main()
                     _ekf->RecallStates(_ekf->statesAtLosMeasTime, (IMUmsec - msecOptDelay));
 
                     // write measurements
-                    _ekf->losData[0] = flowRadX;
-                    _ekf->losData[1] = flowRadY;
+                    _ekf->losData[0] = -flowRadX;
+                    _ekf->losData[1] = -flowRadY;
 
                     // fuse measurements
                     _ekf->fuseOptData = true;
@@ -830,7 +830,7 @@ void WriteFilterOutput()
     fprintf(pOnboardPosVelOutFile,"\n");
 
     fprintf(pOutFlowFile, " %e", float(IMUmsec*0.001f));
-    fprintf(pOutFlowFile, " %e %e %e %e %e %e %e %e %e %e %e\n", flowRadX, flowRadY, _ekf->angRate.x, _ekf->angRate.y, flowRawGroundSpeedX, flowRawGroundSpeedY, gpsRaw[4], gpsRaw[5], distLastValidReading, _ekf->losPred[0], _ekf->losPred[1]);
+    fprintf(pOutFlowFile, " %e %e %e %e %e %e %e %e %e %e %e\n", _ekf->losData[0], _ekf->losData[1], _ekf->angRate.x, _ekf->angRate.y, flowRawGroundSpeedX, flowRawGroundSpeedY, gpsRaw[4], gpsRaw[5], distLastValidReading, _ekf->losPred[0], _ekf->losPred[1]);
 
     // raw GPS outputs
     fprintf(pGpsRawOUTFile," %e", float(IMUmsec*0.001f));

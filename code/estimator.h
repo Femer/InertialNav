@@ -159,7 +159,7 @@ public:
     float P[n_states][n_states]; // covariance matrix
     float Kfusion[n_states]; // Kalman gains
     float states[n_states]; // state matrix
-    float storedStates[n_states][data_buffer_size]; // state vectors stored for the last 50 time steps
+    float storedStates[n_storedStates][data_buffer_size]; // state vectors stored for the last 50 time steps
     uint32_t statetimeStamp[data_buffer_size]; // time stamp for each state vector stored
 
     float statesAtVelTime[n_storedStates]; // States and delta angles at the effective measurement time for posNE and velNED measurements
