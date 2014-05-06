@@ -2992,7 +2992,7 @@ void AttPosEKF::FuseOpticalFlow(float dt)
     Vector3f relVelSensor;
 
 // Perform sequential fusion of optical flow measurements only when in the air and tilt is less than 30 deg.
-    if (useOpticalFlow && (fuseOptData || obsIndex == 1) && !onGround && Tbn.z.z > 0.866f)
+    if (useOpticalFlow && (fuseOptData || obsIndex == 1) && !onGround && Tbs.z.z > 0.866f && rngMea > 5.0f && rngMea < 39.0f)
     {
         // Sequential fusion of XY components to spread processing load across
         // three prediction time steps.
@@ -3060,7 +3060,7 @@ void AttPosEKF::FuseOpticalFlow(float dt)
             //printf("omegaX=%5.2f, omegaY=%5.2f, velY=%5.1f velX=%5.1f\n, range=%5.1f\n", delAngRel.x/dt, delAngRel.y/dt, relVelSensor.y, relVelSensor.x, range);
 
             // scale optical flow observation error with total angular rate
-            R_LOS = 0.1f;// + sq(0.05f*dAngIMU.length()/dtIMU);
+            R_LOS = 0.1f + sq(0.05f*delAngRel.length()/dt);
 
             // Calculate observation jacobians
             SH_LOS[0] = ve*(a1*(2*q0*q1 - 2*q2*q3) + a3*(2*q0*q3 + 2*q1*q2) - sq(q0) + sq(q1) - sq(q2) + sq(q3)) - vd*(a1*(sq(q0) - sq(q1) - sq(q2) + sq(q3)) + 2*q0*q1 + 2*q2*q3 + a3*(2*q0*q2 - 2*q1*q3)) + vn*(a3*(sq(q0) + sq(q1) - sq(q2) - sq(q3)) + 2*q0*q3 - 2*q1*q2 - a1*(2*q0*q2 + 2*q1*q3));
@@ -3187,11 +3187,11 @@ void AttPosEKF::FuseOpticalFlow(float dt)
             innovLOS[1] = losPred[1] - losData[1];
         }
 
-        // Check the innovation for consistency and don't fuse if > 5Sigma
-// DEBUG - threshold changed from 25 to 0 to force it to never fuse.
-// we have a bug in the predicted vs measured values that needs to be sorted first
-        if ((innovLOS[obsIndex]*innovLOS[obsIndex]/varInnovLOS[obsIndex]) < 0.0f)
+        // Check the innovation for consistency and don't fuse if > 3Sigma
+        if ((innovLOS[obsIndex]*innovLOS[obsIndex]/varInnovLOS[obsIndex]) < 9.0f)
         {
+            printf("state23=%5.1f, state24=%5.2f\n", states[22], states[23]);
+
             // correct the state vector
             for (uint8_t j = 0; j < n_states; j++)
             {
@@ -3666,7 +3666,7 @@ void AttPosEKF::ConstrainStates()
     states[22] = ConstrainFloat(states[22], -1000.0f, 1000.0f);
 
     // Constrain optical flow scale factor
-    states[23] = ConstrainFloat(states[22], 0.7f, 1.4f);
+    states[23] = ConstrainFloat(states[23], 0.7f, 1.4f);
 
 }
 

@@ -137,7 +137,7 @@ public:
         magEarthSigma = 3.0e-4f;
         magBodySigma  = 3.0e-4f;
         gndHgtSigma  = 0.02f; // assume 2% terrain gradient 1-sigma
-        optScaleSigma = 1e-4;
+        optScaleSigma = 1e-6;
 
         vneSigma = 0.2f;
         vdSigma = 0.3f;

@@ -631,7 +631,6 @@ void readAirData()
             ADSmsec = tempAdsPrev[1];
             _ekf->VtasMeas = _ekf->EAS2TAS*tempAdsPrev[7];
             _ekf->baroHgt = tempAdsPrev[8];
-            _ekf->rngMea = (_ekf->baroHgt + 5.0f) / _ekf->Tbn.z.z;
         }
     }
     if (ADSmsec > lastADSmsec)
