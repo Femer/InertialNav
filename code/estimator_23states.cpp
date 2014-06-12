@@ -943,7 +943,7 @@ void AttPosEKF::FuseVelposNED()
                 varInnovVelPos[i] = P[stateIndex][stateIndex] + R_OBS[i];
             }
             // apply a 5-sigma threshold
-            current_ekf_state.velHealth = (sq(velInnov[0]) + sq(velInnov[1]) + sq(velInnov[2])) < 25.0f * (varInnovVelPos[0] + varInnovVelPos[1] + varInnovVelPos[2]);
+            current_ekf_state.velHealth = true;//(sq(velInnov[0]) + sq(velInnov[1]) + sq(velInnov[2])) < 25.0f * (varInnovVelPos[0] + varInnovVelPos[1] + varInnovVelPos[2]);
             current_ekf_state.velTimeout = (millis() - current_ekf_state.velFailTime) > horizRetryTime;
             if (current_ekf_state.velHealth || current_ekf_state.velTimeout)
             {
@@ -963,7 +963,7 @@ void AttPosEKF::FuseVelposNED()
             varInnovVelPos[3] = P[7][7] + R_OBS[3];
             varInnovVelPos[4] = P[8][8] + R_OBS[4];
             // apply a 10-sigma threshold
-            current_ekf_state.posHealth = (sq(posInnov[0]) + sq(posInnov[1])) < 100.0f*(varInnovVelPos[3] + varInnovVelPos[4]);
+            current_ekf_state.posHealth = true;//(sq(posInnov[0]) + sq(posInnov[1])) < 100.0f*(varInnovVelPos[3] + varInnovVelPos[4]);
             current_ekf_state.posTimeout = (millis() - current_ekf_state.posFailTime) > horizRetryTime;
             if (current_ekf_state.posHealth || current_ekf_state.posTimeout)
             {
