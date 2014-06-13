@@ -21,9 +21,9 @@ AttPosEKF::AttPosEKF()
     fuseVtasData = false;
     onGround = true;
     staticMode = true;
-    useAirspeed = true;
-    useCompass = true;
-    useRangeFinder = true;
+    useAirspeed = false;
+    useCompass = false;
+    useRangeFinder = false;
     numericalProtection = true;
     refSet = false;
     storeIndex = 0;
