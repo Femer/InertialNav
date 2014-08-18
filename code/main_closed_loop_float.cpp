@@ -121,6 +121,7 @@ FILE * pMagFuseFile;
 FILE * pTasFuseFile;
 FILE * pRngFuseFile;
 FILE * pOptFlowFuseFile;
+FILE * pWindFuseFile;
 FILE * pTimeFile;
 FILE * pGpsRawOUTFile;
 FILE * pGpsRawINFile;
@@ -189,6 +190,7 @@ int main(int argc, char *argv[])
     pTasFuseFile = open_with_exit ("TasFuse.txt","w");
     pRngFuseFile = open_with_exit ("RngFuse.txt","w");
     pOptFlowFuseFile = open_with_exit ("OptFlowFuse.txt","w");
+    pWindFuseFile = open_with_exit ("WindFuse.txt", "w");
     pGpsRawINFile = fopen ("GPSraw.txt","r");
     pGpsRawOUTFile = open_with_exit ("GPSrawOut.txt","w");
     validationOutFile = fopen("ValidationOut.txt", "w");
@@ -1000,6 +1002,11 @@ void WriteFilterOutput()
         fprintf(pOptFlowFuseFile," %e %e", _ekf->innovOptFlow [i], _ekf->varInnovOptFlow[i]);
     }
     fprintf(pOptFlowFuseFile,"\n");
+
+    // wind estimation file
+    fprintf(pWindFuseFile," %e", float(IMUmsec*0.001f));
+    fprintf(pWindFuseFile," %e %e %e %e", _ekf->states[14], _ekf->states[15], _ekf->windSpdFiltNorth, _ekf->windSpdFiltEast);
+    fprintf(pWindFuseFile,"\n");
 }
 
 void readTimingData()
@@ -1044,6 +1051,8 @@ void CloseFiles()
     fclose (validationOutFile);
     fclose (pOnboardPosVelOutFile);
     fclose (pOnboardFile);
+    fclose (pOptFlowFuseFile);
+    fclose (pWindFuseFile);
 }
 
 float ConstrainFloat(float val, float min, float max)
