@@ -1667,12 +1667,13 @@ void AttPosEKF::FuseAirspeed()
         // Nominally damp to 0.02% of the noise, but reduce the damping for strong altitude variations
         // assuming equal wind speeds on the same altitude and varying wind speeds on
         // different altitudes
-        float windFiltCoeff = 0.0002f;
+        float windFiltCoeff = 0.00005f;
 
         float altDiff = fabsf(windSpdFiltAltitude - hgtMea);
+        //printf("altdiff: %8.4f\n", altDiff);
 
         // Change filter coefficient based on altitude
-        windFiltCoeff += ConstrainFloat(0.00001f * altDiff, windFiltCoeff, 0.1f);
+        windFiltCoeff += ConstrainFloat(0.0001f * altDiff, windFiltCoeff, 0.2f);
 
         windSpdFiltNorth = ((1.0f - windFiltCoeff) * windSpdFiltNorth) + (windFiltCoeff * vwn);
         windSpdFiltEast = ((1.0f - windFiltCoeff) * windSpdFiltEast) + (windFiltCoeff * vwe);
@@ -3096,6 +3097,12 @@ void AttPosEKF::ZeroVariables()
     dAngIMU.zero();
     dVelIMU.zero();
     lastGyroOffset.zero();
+
+    windSpdFiltNorth = 0.0f;
+    windSpdFiltEast = 0.0f;
+    // setting the altitude to zero will give us a higher
+    // gain to adjust faster in the first step
+    windSpdFiltAltitude = 0.0f;
 
     for (unsigned i = 0; i < data_buffer_size; i++) {
 
