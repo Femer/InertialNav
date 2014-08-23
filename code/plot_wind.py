@@ -18,7 +18,7 @@ import math
 	# 22: Terrain
 try:
 	data = np.genfromtxt('WindFuse.txt', delimiter=' ', skip_header=1,
-		skip_footer=1, names=['time', 'Wn', 'We', 'Wfn', 'Wfe'])
+		skip_footer=1, names=['time', 'Wn', 'We', 'Wfn', 'Wfe', 'AltDiff', 'Vd'])
 except:
 	try:
 		data = np.genfromtxt('StateDataOut.txt', delimiter=' ', skip_header=1,
@@ -36,7 +36,7 @@ except:
 
 fig = plt.figure()
 
-ax1 = fig.add_subplot(211)
+ax1 = fig.add_subplot(311)
 
 ax1.set_title("Wind Velocity")    
 ax1.set_xlabel('time (s)')
@@ -48,13 +48,22 @@ except:
 	print "No filtered north wind data"
 
 
-ax2 = fig.add_subplot(212)
-  
+ax2 = fig.add_subplot(312)
+
 ax2.set_xlabel('time (s)')
 ax2.set_ylabel('Wind East')
 ax2.plot(data['time'], data['We'], color='g', label='Wind E')
 try:
 	ax2.plot(data['time'], data['Wfe'], color='m', label='Wind E filtered')
+except:
+	print "No filtered east wind data"
+
+ax3 = fig.add_subplot(313)
+
+ax3.set_xlabel('time (s)')
+ax3.set_ylabel('Climb rate')
+try:
+	ax3.plot(data['time'], data['Vd'], color='m', label='Clim rate (m/s)')
 except:
 	print "No filtered east wind data"
 
