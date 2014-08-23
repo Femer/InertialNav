@@ -1005,7 +1005,7 @@ void WriteFilterOutput()
 
     // wind estimation file
     fprintf(pWindFuseFile," %e", float(IMUmsec*0.001f));
-    fprintf(pWindFuseFile," %e %e %e %e %e %e", _ekf->states[14], _ekf->states[15], _ekf->windSpdFiltNorth, _ekf->windSpdFiltEast, _ekf->windSpdFiltAltitude, _ekf->states[6]);
+    fprintf(pWindFuseFile," %e %e %e %e %e %e", _ekf->states[14], _ekf->states[15], _ekf->windSpdFiltNorth, _ekf->windSpdFiltEast, _ekf->windSpdFiltAltitude, _ekf->windSpdFiltClimb);
     fprintf(pWindFuseFile,"\n");
 }
 
